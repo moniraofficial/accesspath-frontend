@@ -9,12 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "chart.js": "^4.6.1",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.77.0",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "19.3.0",
+    "recharts": "^3.11.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
