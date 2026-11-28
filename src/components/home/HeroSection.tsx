@@ -10,21 +10,14 @@ import {
   Accessibility,
 } from "lucide-react";
 
-const CATEGORIES = [
-  "All Categories",
-  "Public Buildings",
-  "Parks",
-  "Hospitals",
-  "Educational Institutions",
-  "Transportation Facilities",
-  "Government Offices",
-  "Community Centers",
-] as const;
+import { ALL_LOCATION_CATEGORIES } from "@/types/api";
+
+const CATEGORIES = ["All Categories", ...ALL_LOCATION_CATEGORIES] as const;
 
 const POPULAR_SEARCHES = [
   { label: "Parks", category: "Parks" },
-  { label: "Hospitals", category: "Hospitals" },
   { label: "Public Buildings", category: "Public Buildings" },
+  { label: "Community Centers", category: "Community Centers" },
   { label: "Metro Stations", category: "Transportation Facilities" },
 ] as const;
 
@@ -166,7 +159,7 @@ export default function HeroSection() {
                 className="h-80 w-full object-cover object-center sm:h-96 lg:h-[420px]"
               />
             ) : (
-              /* Clean visual fallback until you place an image at public/images/hero-wheelchair-walkway.jpg */
+              /* Clean accessible urban walkway visual */
               <div className="relative flex h-80 w-full flex-col justify-between bg-gradient-to-br from-sky-200 via-teal-100 to-emerald-200 p-6 sm:h-96 lg:h-[420px]">
                 {/* Stylized City Skyline */}
                 <div className="mt-6 flex items-end justify-center gap-2 opacity-40">
@@ -188,10 +181,7 @@ export default function HeroSection() {
                         Barrier-Free Walkways &amp; Ramps
                       </p>
                       <p className="text-xs text-slate-600">
-                        Add your photo at{" "}
-                        <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">
-                          public/images/hero-wheelchair-walkway.jpg
-                        </code>
+                        Verified step-free routes, curb ramps, and accessible transit hubs
                       </p>
                     </div>
                   </div>

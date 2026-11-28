@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Search,
   ChevronDown,
@@ -10,7 +10,16 @@ import {
   X,
   MapPinPlus,
   AlertTriangle,
+  Heart,
+  ClipboardList,
+  ShieldCheck,
+  LayoutDashboard,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import RoleBadge from "@/components/ui/RoleBadge";
+import { Permissions } from "@/types/api";
 
 interface NavItem {
   label: string;
@@ -31,13 +40,18 @@ const secondaryNavItems: NavItem[] = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading, logout, hasPermission } = useAuth();
+
   const [contributeOpen, setContributeOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileContributeOpen, setMobileContributeOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,6 +61,12 @@ export default function Navbar() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setContributeOpen(false);
+      }
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setUserMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -67,13 +87,32 @@ export default function Navbar() {
   const isContributeActive =
     pathname.startsWith("/submit-location") || pathname.startsWith("/report");
 
+  const canSubmitLocation =
+    hasPermission(Permissions.SUBMIT_LOCATIONS) ||
+    hasPermission(Permissions.MANAGE_LOCATIONS);
+  const canManageFavorites = hasPermission(Permissions.MANAGE_FAVORITES);
+  const canModerate =
+    hasPermission(Permissions.VERIFY_LOCATIONS) ||
+    hasPermission(Permissions.VERIFY_BARRIERS) ||
+    hasPermission(Permissions.MODERATE_FEEDBACK);
+  const canViewAdmin =
+    hasPermission(Permissions.MANAGE_USERS) ||
+    hasPermission(Permissions.VIEW_ANALYTICS);
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = searchQuery.trim();
     if (!trimmed) return;
     setSearchOpen(false);
     setMobileMenuOpen(false);
-    window.location.href = `/explore?q=${encodeURIComponent(trimmed)}`;
+    router.push(`/explore?q=${encodeURIComponent(trimmed)}`);
+  };
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
+    await logout();
+    router.push("/");
   };
 
   return (
@@ -176,22 +215,24 @@ export default function Navbar() {
                 role="menu"
                 className="absolute left-0 mt-2 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
               >
-                <Link
-                  href="/submit-location"
-                  role="menuitem"
-                  onClick={() => setContributeOpen(false)}
-                  className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[#F2FBF8]"
-                >
-                  <MapPinPlus className="mt-0.5 h-4 w-4 shrink-0 text-[#0A3B3F]" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      Submit New Location
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Add an accessible place &amp; features
-                    </p>
-                  </div>
-                </Link>
+                {(!isAuthenticated || canSubmitLocation) && (
+                  <Link
+                    href="/submit-location"
+                    role="menuitem"
+                    onClick={() => setContributeOpen(false)}
+                    className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[#F2FBF8]"
+                  >
+                    <MapPinPlus className="mt-0.5 h-4 w-4 shrink-0 text-[#0A3B3F]" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Submit New Location
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Add an accessible place &amp; features
+                      </p>
+                    </div>
+                  </Link>
+                )}
 
                 <Link
                   href="/report"
@@ -231,7 +272,7 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Right Actions: Search, Login, Register */}
+        {/* Right Actions: Search + Auth / User Menu */}
         <div className="hidden items-center gap-3 md:flex">
           {searchOpen ? (
             <form
@@ -271,19 +312,130 @@ export default function Navbar() {
             </button>
           )}
 
-          <Link
-            href="/login"
-            className="rounded-full border border-[#0A3B3F]/40 bg-white px-5 py-2 text-sm font-semibold text-[#0A3B3F] transition-colors hover:border-[#0A3B3F] hover:bg-[#F2FBF8]"
-          >
-            Login
-          </Link>
+          {!isLoading && isAuthenticated && user ? (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+                aria-expanded={userMenuOpen}
+                aria-haspopup="menu"
+                className="inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-slate-200 bg-[#F8FAFC] py-1.5 pr-3 pl-2 text-sm font-semibold text-[#0F172A] transition-colors hover:border-[#0A3B3F]/40 hover:bg-[#F2FBF8]"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0A3B3F] text-xs font-bold text-white">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="max-w-[110px] truncate">{user.name}</span>
+                <RoleBadge role={user.role} />
+                <ChevronDown
+                  className={`h-4 w-4 text-slate-500 transition-transform ${
+                    userMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-          <Link
-            href="/register"
-            className="rounded-full bg-[#0A3B3F] px-5 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#072B2E]"
-          >
-            Register
-          </Link>
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"
+                >
+                  <div className="border-b border-slate-100 px-3 py-2">
+                    <p className="truncate text-sm font-bold text-slate-900">
+                      {user.name}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">
+                      {user.email}
+                    </p>
+                  </div>
+
+                  <div className="mt-1.5 space-y-0.5">
+                    {canManageFavorites && (
+                      <Link
+                        href="/favorites"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-[#F2FBF8] hover:text-[#0A3B3F]"
+                      >
+                        <Heart className="h-4 w-4" />
+                        <span>Favorite Locations</span>
+                      </Link>
+                    )}
+
+                    <Link
+                      href="/my-reports"
+                      role="menuitem"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-[#F2FBF8] hover:text-[#0A3B3F]"
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      <span>My Reports</span>
+                    </Link>
+
+                    {canModerate && (
+                      <Link
+                        href="/moderation"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-[#F2FBF8] hover:text-[#0A3B3F]"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>Moderation Queue</span>
+                      </Link>
+                    )}
+
+                    {canViewAdmin && (
+                      <Link
+                        href="/admin"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-[#F2FBF8] hover:text-[#0A3B3F]"
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>Admin &amp; Analytics</span>
+                      </Link>
+                    )}
+
+                    <Link
+                      href="/profile"
+                      role="menuitem"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-[#F2FBF8] hover:text-[#0A3B3F]"
+                    >
+                      <UserIcon className="h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </div>
+
+                  <div className="mt-1.5 border-t border-slate-100 pt-1.5">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-full border border-[#0A3B3F]/40 bg-white px-5 py-2 text-sm font-semibold text-[#0A3B3F] transition-colors hover:border-[#0A3B3F] hover:bg-[#F2FBF8]"
+              >
+                Login
+              </Link>
+
+              <Link
+                href="/register"
+                className="rounded-full bg-[#0A3B3F] px-5 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#072B2E]"
+              >
+                Register
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -362,13 +514,15 @@ export default function Navbar() {
 
               {mobileContributeOpen && (
                 <div className="mt-1 ml-3 flex flex-col space-y-1 border-l-2 border-[#0A3B3F]/20 pl-3">
-                  <Link
-                    href="/submit-location"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                  >
-                    Submit New Location
-                  </Link>
+                  {(!isAuthenticated || canSubmitLocation) && (
+                    <Link
+                      href="/submit-location"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                      Submit New Location
+                    </Link>
+                  )}
                   <Link
                     href="/report"
                     onClick={() => setMobileMenuOpen(false)}
@@ -381,22 +535,79 @@ export default function Navbar() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
-            <Link
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="rounded-full border border-[#0A3B3F] py-2 text-center text-sm font-semibold text-[#0A3B3F] hover:bg-[#F2FBF8]"
-            >
-              Login
-            </Link>
-            <Link
-              href="/register"
-              onClick={() => setMobileMenuOpen(false)}
-              className="rounded-full bg-[#0A3B3F] py-2 text-center text-sm font-semibold text-white hover:bg-[#072B2E]"
-            >
-              Register
-            </Link>
-          </div>
+          {!isLoading && isAuthenticated && user ? (
+            <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+              <div className="flex items-center justify-between px-2">
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{user.name}</p>
+                  <p className="text-xs text-slate-500">{user.email}</p>
+                </div>
+                <RoleBadge role={user.role} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {canManageFavorites && (
+                  <Link
+                    href="/favorites"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Favorites
+                  </Link>
+                )}
+                <Link
+                  href="/my-reports"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  My Reports
+                </Link>
+                {canModerate && (
+                  <Link
+                    href="/moderation"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Moderation
+                  </Link>
+                )}
+                {canViewAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full rounded-full border border-rose-200 bg-rose-50 py-2 text-center text-sm font-semibold text-rose-700 hover:bg-rose-100"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-full border border-[#0A3B3F] py-2 text-center text-sm font-semibold text-[#0A3B3F] hover:bg-[#F2FBF8]"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-full bg-[#0A3B3F] py-2 text-center text-sm font-semibold text-white hover:bg-[#072B2E]"
+              >
+                Register
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </header>

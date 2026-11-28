@@ -142,7 +142,7 @@ const FEATURES: FeatureItem[] = [
   {
     id: "analytics",
     label: "Real-Time Analytics",
-    href: "/dashboard/analytics",
+    href: "/admin",
     icon: (
       <svg
         viewBox="0 0 36 36"
